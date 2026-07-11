@@ -143,10 +143,10 @@ module VectorStore::Embeddable
     end
 
     def embedding_uri_base
-      ENV["EMBEDDING_URI_BASE"].presence || ENV["OPENAI_URI_BASE"].presence || "https://api.openai.com/v1/"
+      ENV["EMBEDDING_URI_BASE"].presence || ENV["OPENAI_URI_BASE"].presence || Setting.openai_uri_base.presence || "https://api.openai.com/v1/"
     end
 
     def embedding_access_token
-      ENV["EMBEDDING_ACCESS_TOKEN"].presence || ENV["OPENAI_ACCESS_TOKEN"].presence
+      ENV["EMBEDDING_ACCESS_TOKEN"].presence || ENV["OPENAI_ACCESS_TOKEN"].presence || Setting.openai_access_token.presence
     end
 end
