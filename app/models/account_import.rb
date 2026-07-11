@@ -1,4 +1,6 @@
 class AccountImport < Import
+  DEFAULT_MAX_ROW_COUNT = 10_000
+
   OpeningBalanceError = Class.new(StandardError)
 
   def import!
@@ -69,7 +71,19 @@ class AccountImport < Import
     CSV.parse(template, headers: true)
   end
 
+  class << self
+    def max_row_count
+      positive_integer_env("ACCOUNT_IMPORT_MAX_ROWS", DEFAULT_MAX_ROW_COUNT)
+    end
+
+    private
+      def positive_integer_env(name, default)
+        value = ENV[name].to_i
+        value.positive? ? value : default
+      end
+  end
+
   def max_row_count
-    50
+    self.class.max_row_count
   end
 end
