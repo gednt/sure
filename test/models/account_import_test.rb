@@ -206,7 +206,41 @@ class AccountImportTest < ActiveSupport::TestCase
     assert_equal({ accounts: 1 }, @import.dry_run)
   end
 
-  test "max_row_count is limited to 50" do
-    assert_equal 50, @import.max_row_count
+  test "max_row_count defaults to 10_000" do
+    assert_equal 10_000, @import.max_row_count
+  end
+
+  test "max_row_count class method returns the default when ACCOUNT_IMPORT_MAX_ROWS is unset" do
+    ENV.delete("ACCOUNT_IMPORT_MAX_ROWS")
+    assert_equal 10_000, AccountImport.max_row_count
+    assert_equal 10_000, @import.max_row_count
+  end
+
+  test "max_row_count falls back to the default when ACCOUNT_IMPORT_MAX_ROWS is blank, zero, or negative" do
+    [nil, "", "0", "-5"].each do |bad_value|
+      ENV["ACCOUNT_IMPORT_MAX_ROWS"] = bad_value
+      assert_equal 10_000, AccountImport.max_row_count, "expected default for value=#{bad_value.inspect}"
+    end
+  ensure
+    ENV.delete("ACCOUNT_IMPORT_MAX_ROWS")
+  end
+
+  test "max_row_count honors the ACCOUNT_IMPORT_MAX_ROWS env override" do
+    ENV["ACCOUNT_IMPORT_MAX_ROWS"] = "2500"
+    assert_equal 2500, AccountImport.max_row_count
+    assert_equal 2500, @import.max_row_count
+  ensure
+    ENV.delete("ACCOUNT_IMPORT_MAX_ROWS")
+  end
+
+  test "row_count_exceeded? flips at the configured ceiling" do
+    ENV["ACCOUNT_IMPORT_MAX_ROWS"] = "100"
+    @import.update!(rows_count: 100)
+    assert_not @import.send(:row_count_exceeded?), "rows_count equal to limit should not exceed"
+
+    @import.update!(rows_count: 101)
+    assert @import.send(:row_count_exceeded?), "rows_count one over the limit should exceed"
+  ensure
+    ENV.delete("ACCOUNT_IMPORT_MAX_ROWS")
   end
 end

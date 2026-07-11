@@ -826,6 +826,26 @@ class Import::PreflightTest < ActiveSupport::TestCase
     assert_operator payload[:errors].size, :>, payload[:stats][:invalid_rows_count]
   end
 
+  test "AccountImport preflight surfaces the configured row-count ceiling" do
+    ENV["ACCOUNT_IMPORT_MAX_ROWS"] = "5"
+
+    rows = (1..6).map do |i|
+      "Checking,Account #{i},#{i * 100}.00,USD,2024-01-#{format('%02d', i)}"
+    end
+    csv = ([ "Account type*,Name*,Balance*,Currency,Balance Date" ] + rows).join("\n")
+
+    response = Import::Preflight.new(
+      family: @family,
+      params: { type: "AccountImport", raw_file_content: csv }
+    ).call
+    payload = response.payload[:data]
+
+    assert_equal :ok, response.status
+    assert_includes payload[:warnings], "Row count exceeds this import type's publish limit."
+  ensure
+    ENV.delete("ACCOUNT_IMPORT_MAX_ROWS")
+  end
+
   test "SureImport preflight handles missing entity counts" do
     result = Struct.new(:stats, :errors, :warnings, keyword_init: true) do
       def valid?
