@@ -68,6 +68,9 @@ class Provider::Openai < Provider
     @uri_base.present?
   end
 
+  attr_reader :uri_base, :default_model
+  alias_method :model, :default_model
+
   # Token-budget knobs. Precedence: ENV > Setting > default. Defaults match
   # Ollama's historical 2048-token baseline so local small-context models work
   # out of the box. Users on larger-context cloud models can raise via ENV or

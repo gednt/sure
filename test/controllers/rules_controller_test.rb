@@ -235,6 +235,91 @@ class RulesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "confirm sets @selected_model from preferred_llm_provider for auto_categorize rules" do
+    rule = @user.family.rules.build(
+      name: "Auto-categorize rule",
+      resource_type: "transaction",
+      active: true
+    )
+    rule.actions.build(action_type: "auto_categorize")
+    rule.save!
+
+    openai_provider = mock
+    openai_provider.stubs(:class).returns(Provider::Openai)
+    Provider::Registry.stubs(:preferred_llm_provider).returns(openai_provider)
+    Provider::Registry.stubs(:get_provider).returns(openai_provider)
+    Provider::Openai.stubs(:effective_model).returns("gpt-4.1")
+    LlmUsage.stubs(:estimate_auto_categorize_cost).returns(0.0123)
+
+    get confirm_rule_url(rule)
+
+    assert_response :success
+    assert_equal "gpt-4.1", assigns(:selected_model)
+  end
+
+  test "confirm resolves provider through preferred_llm_provider and not get_provider(:openai)" do
+    rule = @user.family.rules.build(
+      name: "Auto-categorize rule 2",
+      resource_type: "transaction",
+      active: true
+    )
+    rule.actions.build(action_type: "auto_categorize")
+    rule.save!
+
+    openai_provider = mock
+    openai_provider.stubs(:class).returns(Provider::Openai)
+    Provider::Registry.expects(:preferred_llm_provider).returns(openai_provider).at_least_once
+    Provider::Registry.expects(:get_provider).with(:openai).never
+    Provider::Openai.stubs(:effective_model).returns("gpt-4.1")
+    LlmUsage.stubs(:estimate_auto_categorize_cost).returns(0.01)
+
+    get confirm_rule_url(rule)
+    assert_response :success
+  end
+
+  test "confirm_all uses preferred_llm_provider for cost estimation" do
+    rule = @user.family.rules.build(
+      name: "Auto-categorize rule 3",
+      resource_type: "transaction",
+      active: true
+    )
+    rule.actions.build(action_type: "auto_categorize")
+    rule.save!
+
+    openai_provider = mock
+    openai_provider.stubs(:class).returns(Provider::Openai)
+    Provider::Registry.expects(:preferred_llm_provider).returns(openai_provider).at_least_once
+    Provider::Registry.expects(:get_provider).with(:openai).never
+    Provider::Openai.stubs(:effective_model).returns("gpt-4.1")
+    LlmUsage.stubs(:estimate_auto_categorize_cost).returns(0.025)
+
+    get confirm_all_rules_url
+    assert_response :success
+    assert_equal "gpt-4.1", assigns(:selected_model)
+  end
+
+  test "LlmUsage.estimate_auto_categorize_cost is called with the model of the resolved provider and does not require network" do
+    rule = @user.family.rules.build(
+      name: "Auto-categorize rule 4",
+      resource_type: "transaction",
+      active: true
+    )
+    rule.actions.build(action_type: "auto_categorize")
+    rule.save!
+
+    openai_provider = mock
+    openai_provider.stubs(:class).returns(Provider::Openai)
+    Provider::Registry.stubs(:preferred_llm_provider).returns(openai_provider)
+    Provider::Openai.stubs(:effective_model).returns("gpt-4.1")
+    LlmUsage.expects(:estimate_auto_categorize_cost).with(
+      hash_including(model: "gpt-4.1")
+    ).returns(0.03)
+
+    # No network stubbing needed — estimate_auto_categorize_cost is purely local arithmetic.
+    get confirm_rule_url(rule)
+    assert_response :success
+  end
+
   test "apply_all enqueues job and redirects" do
     assert_enqueued_with(job: ApplyAllRulesJob) do
       post apply_all_rules_url

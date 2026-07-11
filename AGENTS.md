@@ -20,13 +20,29 @@ In addition, the Rails-specific conventions, build commands, API and design-syst
 
 4. Invoke a new agent to do the task. Using `/openspec-apply {plan}` or `/gsd-phase {x}` depending on the tool you used to develop the plan.
 
-5. Run all the unit, integration and E2E tests.
+5. Run all the unit, integration and E2E tests inside the worktree.
 
-6. After all tests pass, commit the changes to `main`
+6. **Push the worktree branch to `origin`.** After tests pass, push the branch from inside the worktree — do not merge first. This guarantees the branch is durable on the remote even if the local worktree is removed.
 
-7. Delete worktree.
+   ```bash
+   git push -u origin gsd/{slug}
+   ```
 
-8. Do the cleanup jobs for git and docker (if docker was used).
+7. **Delete the local worktree.** Remove the worktree directory and the local branch reference; the remote branch remains in `origin` for the merge step.
+
+   ```bash
+   git worktree remove .worktrees/{slug}
+   git branch -d gsd/{slug}
+   ```
+
+8. Merge the branch into `main` from the main checkout, then push `main` and run the cleanup jobs for git and docker (if docker was used).
+
+   ```bash
+   cd <repo-root>
+   git fetch origin
+   git merge --no-ff gsd/{slug}
+   git push
+   ```
 
 ## Git workflow
 

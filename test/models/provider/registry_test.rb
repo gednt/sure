@@ -142,4 +142,73 @@ class Provider::RegistryTest < ActiveSupport::TestCase
 
     assert_nil Provider::Registry.preferred_llm_provider
   end
+
+  test "openai provider returns Provider::Openai with custom uri_base and model from Setting" do
+    ClimateControl.modify(
+      "OPENAI_ACCESS_TOKEN" => nil,
+      "OPENAI_URI_BASE" => nil,
+      "OPENAI_MODEL" => nil
+    ) do
+      Setting.stubs(:openai_access_token).returns("test-key")
+      Setting.stubs(:openai_uri_base).returns("http://192.168.15.6:1234/v1")
+      Setting.stubs(:openai_model).returns("microsoft/phi-4")
+
+      provider = Provider::Registry.get_provider(:openai)
+
+      assert_instance_of Provider::Openai, provider
+      assert_equal "http://192.168.15.6:1234/v1", provider.uri_base
+      assert_equal "microsoft/phi-4", provider.model
+      assert provider.custom_provider?
+    end
+  end
+
+  test "openai provider returns nil when custom uri_base is set without a model" do
+    ClimateControl.modify(
+      "OPENAI_ACCESS_TOKEN" => nil,
+      "OPENAI_URI_BASE" => nil,
+      "OPENAI_MODEL" => nil
+    ) do
+      Setting.stubs(:openai_access_token).returns("test-key")
+      Setting.stubs(:openai_uri_base).returns("http://192.168.15.6:1234/v1")
+      Setting.stubs(:openai_model).returns(nil)
+
+      assert_nil Provider::Registry.get_provider(:openai)
+    end
+  end
+
+  test "openai provider prefers ENV over Setting for uri_base and model" do
+    ClimateControl.modify(
+      "OPENAI_ACCESS_TOKEN" => "env-token",
+      "OPENAI_URI_BASE" => "http://192.168.15.6:1234/v1",
+      "OPENAI_MODEL" => "microsoft/phi-4"
+    ) do
+      Setting.stubs(:openai_access_token).returns("setting-token")
+      Setting.stubs(:openai_uri_base).returns("http://setting-host/v1")
+      Setting.stubs(:openai_model).returns("setting-model")
+
+      provider = Provider::Registry.get_provider(:openai)
+
+      assert_instance_of Provider::Openai, provider
+      assert_equal "http://192.168.15.6:1234/v1", provider.uri_base
+      assert_equal "microsoft/phi-4", provider.model
+    end
+  end
+
+  test "Provider::Openai#supports_model? returns true for any model when custom_provider? is true" do
+    provider = Provider::Openai.new(
+      "test-key",
+      uri_base: "http://192.168.15.6:1234/v1",
+      model: "microsoft/phi-4"
+    )
+
+    assert provider.custom_provider?
+    assert provider.supports_model?("microsoft/phi-4")
+  end
+
+  test "Provider::Openai#supports_model? returns false for unsupported models when not a custom provider" do
+    provider = Provider::Openai.new("test-key")
+
+    assert_not provider.custom_provider?
+    assert_not provider.supports_model?("microsoft/phi-4")
+  end
 end
