@@ -44,6 +44,8 @@ Join us!
 
 Sure is a fully working personal finance app that can be [self hosted with Docker](docs/hosting/docker.md).
 
+**Quick Start:** Get started in under 5 minutes with our [Docker Quickstart Guide](docs/hosting/docker-quickstart.md).
+
 ## Forking and Attribution
 
 This repo is a community fork of the archived Maybe Finance repo.
