@@ -1,0 +1,131 @@
+name: Release Charts
+
+on:
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push the chart to OCI and update gh-pages"
+        required: false
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'chart-v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  ci-charts:
+    name: Chart CI
+    uses: ./.github/workflows/ci-charts.yml
+    with:
+      chart-path: charts/sure
+
+  package:
+    name: Package Helm chart
+    needs: [ci-charts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+
+      - name: Resolve chart and app versions
+        id: version
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG_NAME="${GITHUB_REF_NAME}"
+          CHART_VERSION="${TAG_NAME#chart-v}"
+          APP_SEMVER=$(cat .sure-version | tr -d '[:space:]')
+          echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
+          echo "app_version=$APP_SEMVER" >> "$GITHUB_OUTPUT"
+
+      - name: Build chart dependencies
+        run: helm dependency build charts/sure
+
+      - name: Package chart
+        run: |
+          helm package charts/sure \
+            --version "${{ steps.version.outputs.chart_version }}" \
+            --app-version "${{ steps.version.outputs.app_version }}" \
+            --destination .helm-release
+
+      - name: Upload packaged chart
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: helm-chart-package
+          path: .helm-release/*.tgz
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish to OCI and gh-pages
+    needs: [package]
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.push == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+
+      - name: Download packaged chart
+        uses: actions/download-artifact@37930b1a2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: helm-chart-package
+          path: .helm-release
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push chart to GHCR (OCI)
+        env:
+          CHART_VERSION: ${{ needs.package.outputs.chart_version }}
+        run: |
+          set -euo pipefail
+          helm push .helm-release/sure-${CHART_VERSION}.tgz \
+            oci://ghcr.io/we-promise/charts/sure
+
+      - name: Configure git for gh-pages push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update Helm repo index on gh-pages
+        env:
+          CHART_VERSION: ${{ needs.package.outputs.chart_version }}
+        run: |
+          set -euo pipefail
+          git fetch origin gh-pages || git checkout -b gh-pages
+          git checkout gh-pages
+          mkdir -p charts
+          cp "../.helm-release/sure-${CHART_VERSION}.tgz" charts/
+          helm repo index charts --url https://we-promise.github.io/sure/charts
+          git add charts
+          git commit -m "charts: publish sure ${CHART_VERSION}" || echo "no changes"
+          git push origin gh-pages

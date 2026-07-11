@@ -1,0 +1,101 @@
+name: Mobile CI
+
+on:
+  workflow_call:
+    inputs:
+      flutter-version:
+        description: "Flutter version (defaults to a pinned 3.32.x)"
+        required: false
+        type: string
+        default: "3.32.4"
+      run-integration:
+        description: "Run integration tests (not yet wired up; reserved)"
+        required: false
+        type: boolean
+        default: false
+      target:
+        description: "Which platform(s) to validate"
+        required: false
+        type: choice
+        options: [all, android, ios]
+        default: "all"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ inputs.flutter-version }}
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Copy Sure icons from public/
+        run: cp public/android-chrome-512x512.png mobile/assets/icon/app_icon.png
+
+      - name: Generate app icons
+        working-directory: mobile
+        run: flutter pub run flutter_launcher_icons
+
+      - name: Analyze code
+        working-directory: mobile
+        run: flutter analyze --no-fatal-infos
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ inputs.flutter-version }}
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Copy Sure icons from public/
+        run: cp public/android-chrome-512x512.png mobile/assets/icon/app_icon.png
+
+      - name: Generate app icons
+        working-directory: mobile
+        run: flutter pub run flutter_launcher_icons
+
+      - name: Run tests
+        working-directory: mobile
+        run: flutter test

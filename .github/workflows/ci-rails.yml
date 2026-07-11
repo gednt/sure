@@ -1,10 +1,30 @@
-name: CI
+name: Rails CI
 
 on:
   workflow_call:
+    inputs:
+      ruby-version:
+        description: "Ruby version (defaults to .ruby-version)"
+        required: false
+        type: string
+        default: ""
+      run-system-tests:
+        description: "Run system tests (requires Chrome + Postgres + Redis)"
+        required: false
+        type: boolean
+        default: true
+      bundler-cache:
+        description: "Cache bundle install output"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
 
 jobs:
-  scan_ruby:
+  brakeman:
+    name: Brakeman
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -16,8 +36,8 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1.308.0
         with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+          ruby-version: ${{ inputs.ruby-version || '.ruby-version' }}
+          bundler-cache: ${{ inputs.bundler-cache }}
 
       - name: Scan for security vulnerabilities in Ruby dependencies
         run: bin/brakeman --no-pager
@@ -25,7 +45,8 @@ jobs:
       - name: Validate preview deploy workflow hardening
         run: ruby bin/preview_deploy_security_check.rb
 
-  scan_js:
+  importmap_audit:
+    name: Importmap audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -37,13 +58,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1.308.0
         with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+          ruby-version: ${{ inputs.ruby-version || '.ruby-version' }}
+          bundler-cache: ${{ inputs.bundler-cache }}
 
       - name: Scan for security vulnerabilities in JavaScript dependencies
         run: bin/importmap audit
 
-  lint:
+  rubocop:
+    name: RuboCop
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -55,13 +77,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1.308.0
         with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+          ruby-version: ${{ inputs.ruby-version || '.ruby-version' }}
+          bundler-cache: ${{ inputs.bundler-cache }}
 
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
-  lint_js:
+  biome:
+    name: Biome
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -83,7 +106,8 @@ jobs:
       - name: Lint/Format js code
         run: npm run lint
 
-  test_unit:
+  unit:
+    name: Unit and integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -118,8 +142,8 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1.308.0
         with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+          ruby-version: ${{ inputs.ruby-version || '.ruby-version' }}
+          bundler-cache: ${{ inputs.bundler-cache }}
 
       - name: DB setup and smoke test
         run: |
@@ -130,7 +154,9 @@ jobs:
       - name: Unit and integration tests
         run: bin/rails test
 
-  test_system:
+  system:
+    name: System tests
+    if: inputs.run-system-tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -165,8 +191,8 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1.308.0
         with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+          ruby-version: ${{ inputs.ruby-version || '.ruby-version' }}
+          bundler-cache: ${{ inputs.bundler-cache }}
 
       - name: DB setup and smoke test
         run: |

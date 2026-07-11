@@ -1,0 +1,144 @@
+name: LLM Evals
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to evaluate (default: main)"
+        required: false
+        type: string
+        default: "main"
+      update-baseline:
+        description: "Update the eval threshold baseline from this run"
+        required: false
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  EVAL_MODELS: gpt-4.1
+  RAILS_ENV: test
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432 # pipelock:ignore
+  REDIS_URL: redis://localhost:6379
+  PLAID_CLIENT_ID: foo
+  PLAID_SECRET: bar
+
+jobs:
+  check_openai:
+    name: Check OpenAI credentials
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+      reason: ${{ steps.gate.outputs.reason }}
+    steps:
+      - name: Validate OpenAI token and quota
+        id: gate
+        env:
+          OPENAI_ACCESS_TOKEN: ${{ secrets.OPENAI_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${OPENAI_ACCESS_TOKEN:-}" ]; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "reason=OPENAI_ACCESS_TOKEN secret is missing" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          TEST_MODEL=$(printf '%s' "$EVAL_MODELS" | cut -d',' -f1 | xargs)
+          [ -z "$TEST_MODEL" ] && TEST_MODEL="gpt-4.1"
+          STATUS_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+            https://api.openai.com/v1/chat/completions \
+            -H "Authorization: Bearer ${OPENAI_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"${TEST_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"max_tokens\":1}")
+          if [ "$STATUS_CODE" = "200" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "reason=ok" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "reason=OpenAI token invalid or insufficient quota (${STATUS_CODE})" >> "$GITHUB_OUTPUT"
+          fi
+
+  run_evals:
+    name: Run LLM evals
+    needs: [check_openai]
+    if: needs.check_openai.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      REF: ${{ github.event.inputs.ref || github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ env.REF }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1.308.0
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Discover eval datasets
+        id: datasets
+        run: |
+          set -euo pipefail
+          datasets=$(ls test/llm/ 2>/dev/null | head -50 || true)
+          echo "datasets<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$datasets" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Run eval suite
+        id: evals
+        env:
+          OPENAI_ACCESS_TOKEN: ${{ secrets.OPENAI_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -d test/llm ]; then
+            bin/rails test test/llm 2>&1 | tee eval-results.txt || true
+          else
+            echo "No test/llm directory found; emitting a placeholder result."
+            echo "No eval datasets to run." > eval-results.txt
+          fi
+          {
+            echo "## Eval results"
+            echo
+            echo "- Ref: ${{ env.REF }}"
+            echo
+            echo '```'
+            cat eval-results.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post results to pinned issue
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          REF: ${{ env.REF }}
+          RESULTS_FILE: eval-results.txt
+        with:
+          script: |
+            const fs = require('node:fs');
+            const title = 'LLM evals — ' + context.payload.repository.default_branch;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo, state: 'open', labels: 'llm-evals',
+            });
+            let issue = issues.find(i => i.title === title);
+            const results = fs.readFileSync(process.env.RESULTS_FILE, 'utf8');
+            const body = [
+              'Eval run for `' + process.env.REF + '`:',
+              '',
+              '```',
+              results,
+              '```',
+            ].join('\n');
+            if (issue) {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, body });
+            } else {
+              await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ['llm-evals'] });
+            }

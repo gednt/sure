@@ -1,0 +1,72 @@
+name: Release Rails
+
+on:
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push the image to GHCR"
+        required: false
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+    paths-ignore:
+      - 'charts/**'
+      - 'mobile/**'
+  schedule:
+    - cron: '30 1 * * *'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  ci:
+    name: Rails CI
+    uses: ./.github/workflows/ci-rails.yml
+    with:
+      run-system-tests: false
+
+  build:
+    name: Build and push multi-arch image
+    needs: [ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve image tag
+        id: tag
+        shell: bash
+        env:
+          PUSH: ${{ github.event.inputs.push || 'false' }}
+        run: |
+          set -euo pipefail
+          if [ "$PUSH" = "true" ]; then
+            echo "should_push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_push=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build image
+        uses: ./.github/actions/build-rails-image
+        with:
+          mode: push
+          push: ${{ steps.tag.outputs.should_push }}
+          tag: sha-${{ github.sha }}
+          sha: ${{ github.sha }}
+          registry: ${{ env.REGISTRY }}
+          image-name: ${{ env.IMAGE_NAME }}

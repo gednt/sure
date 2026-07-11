@@ -1,24 +1,37 @@
-name: Flutter Mobile Build
+name: Release Mobile
 
 on:
-  workflow_call:
-    outputs:
-      has_app_release_aab:
-        description: "Whether a signed release AAB artifact was produced"
-        value: ${{ jobs.build-android.outputs.has_app_release_aab }}
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Which platform to build"
+        required: false
+        type: choice
+        options: [all, android, ios]
+        default: "all"
+  push:
+    tags:
+      - 'mobile-v*'
 
 permissions:
   contents: read
 
 jobs:
-  build-android:
-    name: Build Android APK
+  ci-mobile:
+    name: ci-mobile
+    uses: ./.github/workflows/ci-mobile.yml
+    with:
+      target: ${{ github.event.inputs.target || 'all' }}
+
+  android-build:
+    name: Build Android APK + AAB
+    needs: [ci-mobile]
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.target == 'all' || github.event.inputs.target == 'android')
+      || (github.event_name != 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    outputs:
-      has_app_release_aab: ${{ steps.check_secrets.outputs.has_keystore }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -49,22 +62,14 @@ jobs:
         working-directory: mobile
         run: flutter pub run flutter_launcher_icons
 
-      - name: Analyze code
-        working-directory: mobile
-        run: flutter analyze --no-fatal-infos
-
-      - name: Run tests
-        working-directory: mobile
-        run: flutter test
-
       - name: Check if keystore secrets exist
         id: check_secrets
         run: |
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "has_keystore=true" >> $GITHUB_OUTPUT
+            echo "has_keystore=true" >> "$GITHUB_OUTPUT"
             echo "✓ Keystore secrets found, will build signed APK"
           else
-            echo "has_keystore=false" >> $GITHUB_OUTPUT
+            echo "has_keystore=false" >> "$GITHUB_OUTPUT"
             echo "⚠ No keystore secrets, will build unsigned debug APK"
           fi
 
@@ -117,11 +122,15 @@ jobs:
           path: mobile/build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
 
-  build-ios:
-    name: Build iOS IPA
+  ios-build:
+    name: Build iOS (unsigned)
+    needs: [ci-mobile]
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.target == 'all' || github.event.inputs.target == 'ios')
+      || (github.event_name != 'workflow_dispatch')
     runs-on: macos-latest
     timeout-minutes: 45
-
     steps:
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -149,14 +158,6 @@ jobs:
       - name: Install CocoaPods dependencies
         working-directory: mobile/ios
         run: pod install
-
-      - name: Analyze code
-        working-directory: mobile
-        run: flutter analyze --no-fatal-infos
-
-      - name: Run tests
-        working-directory: mobile
-        run: flutter test
 
       - name: Build iOS (No Code Signing)
         working-directory: mobile

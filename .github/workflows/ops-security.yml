@@ -1,0 +1,101 @@
+name: Security Gate
+
+on:
+  workflow_call:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  pipelock:
+    name: Pipelock
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Pipelock Scan
+        uses: luckyPipewrench/pipelock@818ca0a7af4dbcd56ada7fa57e2dc32f9e799e34 # v2.8.0
+        with:
+          version: '2.8.0'
+          scan-diff: 'true'
+          fail-on-findings: 'true'
+          test-vectors: 'false'
+          exclude-paths: |
+            .env.example
+            compose.example.yml
+            compose.example.ai.yml
+            config/locales/views/reports/
+            docs/hosting/ai.md
+            app/models/provider/binance.rb
+            workers/preview/package-lock.json
+            Dockerfile.preview
+
+  brakeman:
+    name: Brakeman
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1.308.0
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Scan for security vulnerabilities in Ruby dependencies
+        run: bin/brakeman --no-pager
+
+  zizmor:
+    name: Zizmor (workflow lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@3ee01b18c83b48fb20e8079b86348aa4a64a768b # v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  pipelock_ignore_audit:
+    name: pipelock:ignore audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: List pipelock:ignore directives
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## pipelock:ignore directives"
+            echo
+            echo "All directives (each must be reviewed by a human):"
+            echo
+            grep -RIn --exclude-dir=.git --exclude-dir=node_modules 'pipelock:ignore' . || echo "(none)"
+            echo
+            echo "Directives added/removed in this PR:"
+            echo
+            base_ref="${{ github.event.pull_request.base.sha }}"
+            head_ref="${{ github.event.pull_request.head.sha }}"
+            if [ -n "$base_ref" ] && [ -n "$head_ref" ]; then
+              git diff "$base_ref"..."$head_ref" -- . \
+                | grep -E '^\+.*pipelock:ignore|^-.*pipelock:ignore' \
+                || echo "(no changes)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
