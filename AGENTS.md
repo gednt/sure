@@ -4,10 +4,6 @@ This repository follows the GSD + openspec development workflow (worktree per ph
 
 In addition, the Rails-specific conventions, build commands, API and design-system rules are documented in the remaining sections.
 
-## CI workflows
-
-GitHub Actions workflows live in [`.github/workflows/`](.github/workflows/README.md). The naming convention is `<stage>-<surface>.yml` where `stage ∈ {pr, ci, release, ops}`. The catalog of triggers, required secrets, and downstream consumers is in [`docs/ci/workflows.md`](docs/ci/workflows.md). Before adding a new workflow, read the "Extension guide" there to decide which file to add or extend.
-
 ## # Development workflow
 
 1. Open a Worktree.
