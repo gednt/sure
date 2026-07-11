@@ -25,5 +25,5 @@
 ## 5. Lint, commit, and push
 
 - [x] 5.1 Run `bin/rubocop` on the worktree and `bin/brakeman` if the changes touch request-handling or auth-adjacent code (they do not here, but verify).
-- [ ] 5.2 Commit with an imperative subject ≤ 72 chars (e.g. `fix(ai): run auto_categorize against custom OpenAI endpoints`) and a body that references the user's report, the design decision (D1–D4), and the integration test path.
-- [ ] 5.3 Push the worktree branch per the AGENTS.md auto-push policy (`git push -u origin gsd/fix-auto-categorization-custom-openai`).
+- [x] 5.2 Commit with an imperative subject ≤ 72 chars (e.g. `fix(ai): run auto_categorize against custom OpenAI endpoints`) and a body that references the user's report, the design decision (D1–D4), and the integration test path.
+- [x] 5.3 Push the worktree branch per the AGENTS.md auto-push policy (`git push -u origin gsd/fix-auto-categorization-custom-openai`).
