@@ -28,21 +28,14 @@ In addition, the Rails-specific conventions, build commands, API and design-syst
    git push -u origin gsd/{slug}
    ```
 
-7. **Delete the local worktree.** Remove the worktree directory and the local branch reference; the remote branch remains in `origin` for the merge step.
+7. **Delete the local worktree.** Remove the worktree directory and the local branch reference. The remote branch remains in `origin` for human review and merge — the agent does not merge into `main`.
 
    ```bash
    git worktree remove .worktrees/{slug}
    git branch -d gsd/{slug}
    ```
 
-8. Merge the branch into `main` from the main checkout, then push `main` and run the cleanup jobs for git and docker (if docker was used).
-
-   ```bash
-   cd <repo-root>
-   git fetch origin
-   git merge --no-ff gsd/{slug}
-   git push
-   ```
+   **The agent's job ends here.** Merging `gsd/{slug}` into `main` is a human responsibility. The agent pushes the worktree branch to `origin` and stops; a maintainer reviews the PR and merges.
 
 ## Git workflow
 
@@ -134,22 +127,14 @@ cd .worktrees/{slug}
 # ... make changes, commit, push (per the auto-push policy above)
 ```
 
-**Merge back to main** (when phase/plan is verified complete):
-
-```bash
-# From the main checkout:
-cd <repo-root>
-git fetch origin
-git merge --no-ff gsd/{slug}
-git push
-```
-
-**Remove the worktree** (after merge, to reclaim disk):
+**Remove the worktree** (after push, to reclaim disk):
 
 ```bash
 git worktree remove .worktrees/{slug}
 git branch -d gsd/{slug}   # delete the merged branch
 ```
+
+A human maintainer reviews the PR and merges `gsd/{slug}` into `main`. The agent does not merge.
 
 ### Rules
 
@@ -158,7 +143,7 @@ git branch -d gsd/{slug}   # delete the merged branch
 3. **Commit + push from inside the worktree.** The auto-push policy applies everywhere.
 4. **Worktrees are disposable.** If a plan is abandoned, `git worktree remove --force .worktrees/{slug}` and delete the branch. No data is lost — the main checkout is untouched.
 5. **Run services from the worktree.** `bin/dev` / `bin/rails` / `docker compose` run from inside the active worktree, so the process sees the in-progress code, not `main`.
-6. **Clean up after merge.** Don't accumulate stale worktrees — remove them once their branch is merged to `main`.
+6. **Clean up after push.** Don't accumulate stale worktrees — remove the local worktree as soon as the branch is on `origin`. The remote branch stays for human review.
 
 ### Practical example: Phase 0
 
@@ -175,12 +160,13 @@ bin/rails test
 # ... edit code, commit, push (auto-push policy)
 
 # When Phase 0 is verified complete:
-cd <repo-root>
-git fetch origin
-git merge --no-ff gsd/phase-0-foundation
-git push
+# From inside the worktree, push the branch:
+git push -u origin gsd/phase-0-foundation
+
+# Then remove the local worktree (the remote branch stays for human merge):
 git worktree remove .worktrees/phase-0
 git branch -d gsd/phase-0-foundation
+# A human maintainer reviews the PR and merges into main. The agent does not merge.
 ```
 
 ## Verification gate for plans and proposals
