@@ -52,3 +52,17 @@ Every pull request to the `main` branch automatically runs a Pipelock security s
 - Agent security risks (misconfigurations, exposed credentials, missing controls)
 
 The scan runs as part of the CI pipeline and typically completes in ~30 seconds. If security issues are found, the CI check will fail. You don't need to configure anything—the security scanning is automatic and zero-configuration.
+
+## Reporting Bugs and Requesting Features
+
+Please use the [GitHub issue templates](https://github.com/we-promise/sure/issues/new/choose) when opening a new issue — there are templates for [bug reports](.github/ISSUE_TEMPLATE/bug_report.md) and other requests.
+
+For security vulnerabilities, please follow the disclosure process in [SECURITY.md](SECURITY.md) rather than opening a public issue.
+
+## Additional Resources
+
+- [Onboarding guide](docs/onboarding/guide.md) — a deeper walkthrough of the codebase and conventions
+- [Architecture overview](docs/architecture/overview.md) — high-level system design
+- [API documentation](docs/api/) — generated OpenAPI reference
+- [Hosting & deployment](docs/hosting/) — running Sure in production
+- [LLM guides](docs/llm-guides/) — guides intended for AI coding assistants (also useful for humans)

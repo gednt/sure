@@ -73,7 +73,10 @@ coverage
 dump.rdb
 
 # Ignore node related files
-node_modules
+node_modules/
+**/node_modules/
+**/bun.lock
+**/package-lock.json
 
 compose.yml
 

@@ -1,0 +1,14 @@
+{
+  "doc_path": "docs/guides/configuration.md",
+  "claims_checked": 28,
+  "claims_passed": 27,
+  "claims_failed": 1,
+  "failures": [
+    {
+      "line": 362,
+      "claim": "Invalid configuration raises `ActiveRecordEncryptionConfig::PartialEnvError`",
+      "expected": "class `ActiveRecordEncryptionConfig::PartialEnvError` exists in codebase",
+      "actual": "no such error class exists; `lib/active_record_encryption_config.rb` defines only the `ActiveRecordEncryptionConfig` module with `partial_env?` and `partial_env_message` methods. The initializer raises the message string returned by `partial_env_message`, not a custom error class."
+    }
+  ]
+}

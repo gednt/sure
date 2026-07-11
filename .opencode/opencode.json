@@ -1,0 +1,11 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "permission": {
+    "read": {
+      "/home/reisfelipe18/Repos/sure/.opencode/gsd-core/*": "allow"
+    },
+    "external_directory": {
+      "/home/reisfelipe18/Repos/sure/.opencode/gsd-core/*": "allow"
+    }
+  }
+}

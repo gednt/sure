@@ -1,3 +1,4 @@
+<!-- generated-by: gsd-doc-writer -->
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/we-promise/sure)
 [![View performance data on Skylight](https://badges.skylight.io/typical/s6PEZSKwcklL.svg)](https://oss.skylight.io/app/applications/s6PEZSKwcklL)
 [![Dosu](https://raw.githubusercontent.com/dosu-ai/assets/main/dosu-badge.svg)](https://app.dosu.dev/a72bdcfd-15f5-4edc-bd85-ea0daa6c3adc/ask)
@@ -7,17 +8,19 @@
 
 <p align="center">
   <!-- Keep these links. Translations will automatically update with the README. -->
-  <a href="https://readme-i18n.com/de/we-promise/sure">Deutsch</a> | 
-  <a href="https://readme-i18n.com/es/we-promise/sure">Español</a> | 
-  <a href="https://readme-i18n.com/fr/we-promise/sure">Français</a> | 
-  <a href="https://readme-i18n.com/ja/we-promise/sure">日本語</a> | 
-  <a href="https://readme-i18n.com/ko/we-promise/sure">한국어</a> | 
-  <a href="https://readme-i18n.com/pt/we-promise/sure">Português</a> | 
-  <a href="https://readme-i18n.com/ru/we-promise/sure">Русский</a> | 
+  <a href="https://readme-i18n.com/de/we-promise/sure">Deutsch</a> |
+  <a href="https://readme-i18n.com/es/we-promise/sure">Español</a> |
+  <a href="https://readme-i18n.com/fr/we-promise/sure">Français</a> |
+  <a href="https://readme-i18n.com/ja/we-promise/sure">日本語</a> |
+  <a href="https://readme-i18n.com/ko/we-promise/sure">한국어</a> |
+  <a href="https://readme-i18n.com/pt/we-promise/sure">Português</a> |
+  <a href="https://readme-i18n.com/ru/we-promise/sure">Русский</a> |
   <a href="https://readme-i18n.com/zh/we-promise/sure">中文</a>
 </p>
 
 # Sure: The personal finance app for everyone
+
+Sure is a community-maintained personal finance and wealth management application that helps users track accounts, transactions, investments, and financial goals in one place.
 
 <b>Get
 involved: [Discord](https://discord.gg/36ZGBsxYEK) • [Website](https://sure.am) • [Issues](https://github.com/we-promise/sure/issues)</b>
@@ -28,7 +31,7 @@ involved: [Discord](https://discord.gg/36ZGBsxYEK) • [Website](https://sure.am
 
 ## Backstory
 
-The [Maybe Finance](https://github.com/maybe-finance/maybe) (archived/abandoned repo) team spent most of 2021–2022 building a full-featured personal finance and wealth management app. It even included an “Ask an Advisor” feature that connected users with a real CFP/CFA — all included with your subscription.
+The [Maybe Finance](https://github.com/maybe-finance/maybe) (archived/abandoned repo) team spent most of 2021–2022 building a full-featured personal finance and wealth management app. It even included an "Ask an Advisor" feature that connected users with a real CFP/CFA — all included with your subscription.
 
 The business end of things didn't work out, and so they stopped developing the app in mid-2023.
 
@@ -36,9 +39,75 @@ After spending nearly $1 million on development (employees, contractors, data pr
 
 They actually did launch that hosted version … briefly.
 
-That also didn’t work out — at least not as a sustainable B2C business — so now here we are: hosting a community-maintained fork to keep the codebase alive and see where this can go next.
+That also didn't work out — at least not as a sustainable B2C business — so now here we are: hosting a community-maintained fork to keep the codebase alive and see where this can go next.
 
 Join us!
+
+## Installation
+
+Sure can be self-hosted with Docker or run locally for development.
+
+### Docker Installation
+
+The fastest way to get started is with Docker. See our [Docker Quickstart Guide](docs/hosting/docker-quickstart.md) for a 5-minute setup.
+
+### Development Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/we-promise/sure.git
+cd sure
+
+# Copy environment configuration
+cp .env.local.example .env.local
+
+# Install dependencies and setup the database
+bin/setup
+
+# Start the development server
+bin/dev
+```
+
+Visit http://localhost:3000 to view the app.
+
+## Quick Start
+
+1. **Clone and setup**: `git clone https://github.com/we-promise/sure.git && cd sure && cp .env.local.example .env.local && bin/setup`
+2. **Start the server**: `bin/dev`
+3. **Access the app**: Open http://localhost:3000 in your browser
+4. **Load demo data** (optional): `rake demo_data:default` for sample accounts and transactions
+
+## Usage Examples
+
+### Development Workflow
+
+```bash
+# Run the test suite
+bin/rails test
+
+# Run linting
+bin/rubocop
+npm run lint
+
+# Format code
+npm run format
+
+# Load demo data for testing
+rake demo_data:default
+```
+
+### Adding Financial Data
+
+Once running, you can:
+- Connect financial institutions via Plaid or other supported providers
+- Import transactions from CSV files
+- Manually enter accounts and transactions
+- Track investments and securities
+- Set and monitor financial goals
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to Sure.
 
 ## Hosting Sure
 
@@ -46,10 +115,20 @@ Sure is a fully working personal finance app that can be [self hosted with Docke
 
 **Quick Start:** Get started in under 5 minutes with our [Docker Quickstart Guide](docs/hosting/docker-quickstart.md).
 
+### One-click Install
+
+[![Run on PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=sure)
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/sure?referralCode=CW_fPQ)
+
+### Managed OpenClaw for Sure Finances
+
+<a href="https://kilocode.pxf.io/repo-readme"><img src="https://kilo.ai/kiloclaw/partner-resources/kiloclaw-logo-yellow-bg-typography.png" alt="Managed OpenClaw for Sure Finances" width="185"/></a>
+
 ## Forking and Attribution
 
 This repo is a community fork of the archived Maybe Finance repo.
-You’re free to fork it under the AGPLv3 license — but we’d love it if you stuck around and contributed here instead.
+You're free to fork it under the AGPLv3 license — but we'd love it if you stuck around and contributed here instead.
 
 To stay compliant and avoid trademark issues:
 
@@ -72,12 +151,14 @@ The instructions below are for developers to get started with contributing to th
 
 ### Requirements
 
-- See `.ruby-version` file for required Ruby version
+- Ruby 3.4.9 (see `.ruby-version` file)
 - PostgreSQL >9.3 (latest stable version recommended)
 - Redis > 5.4 (latest stable version recommended)
+- Node.js and npm (for asset compilation)
 
 ### Getting Started
-```sh
+
+```bash
 cd sure
 cp .env.local.example .env.local
 bin/setup
@@ -94,8 +175,6 @@ If you loaded the optional demo data, log in with these credentials:
 - Email: `user@example.com`
 - Password: `Password1!`
 
-For further instructions, see guides below.
-
 ### Setup Guides
 
 - [Mac dev setup](https://github.com/we-promise/sure/wiki/Mac-Dev-Setup-Guide)
@@ -103,21 +182,10 @@ For further instructions, see guides below.
 - [Windows dev setup](https://github.com/we-promise/sure/wiki/Windows-Dev-Setup-Guide)
 - Dev containers - visit [this guide](https://code.visualstudio.com/docs/devcontainers/containers)
 
-### One-click Install
+## License
 
-[![Run on PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=sure)
+Maybe and Sure are both distributed under an [AGPLv3 license](LICENSE).
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/sure?referralCode=CW_fPQ)
-
-### Managed OpenClaw for Sure Finances
-
-<a href="https://kilocode.pxf.io/repo-readme"><img src="https://kilo.ai/kiloclaw/partner-resources/kiloclaw-logo-yellow-bg-typography.png" alt="Managed OpenClaw for Sure Finances" width="185"/></a>
-
-
-## License and Trademarks
-
-Maybe and Sure are both distributed under
-an [AGPLv3 license](https://github.com/we-promise/sure/blob/main/LICENSE).
 - "Maybe" is a trademark of Maybe Finance, Inc.
 - "Sure" is not, and refers to this community fork.
 
