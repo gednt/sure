@@ -4,7 +4,7 @@ class VectorStore::EmbeddableTest < ActiveSupport::TestCase
   class EmbeddableHost
     include VectorStore::Embeddable
     # Expose private methods for testing
-    public :extract_text, :chunk_text, :embed, :embed_batch
+    public :extract_text, :chunk_text, :embed, :embed_batch, :embedding_uri_base, :embedding_access_token
   end
 
   setup do
@@ -193,6 +193,60 @@ class VectorStore::EmbeddableTest < ActiveSupport::TestCase
   ensure
     VectorStore::Embeddable.send(:remove_const, :EMBED_BATCH_SIZE)
     VectorStore::Embeddable.const_set(:EMBED_BATCH_SIZE, original)
+  end
+
+  # --- configuration fallbacks ---
+
+  test "embedding_uri_base falls back from ENV to Setting to default" do
+    # 1. ENV is set
+    ClimateControl.modify EMBEDDING_URI_BASE: "http://env-embedding.local/v1/" do
+      Setting.stubs(:openai_uri_base).returns("http://setting-openai.local/v1/")
+      assert_equal "http://env-embedding.local/v1/", @host.embedding_uri_base
+    end
+
+    # 2. OPENAI_URI_BASE env is set
+    ClimateControl.modify EMBEDDING_URI_BASE: nil, OPENAI_URI_BASE: "http://env-openai.local/v1/" do
+      Setting.stubs(:openai_uri_base).returns("http://setting-openai.local/v1/")
+      assert_equal "http://env-openai.local/v1/", @host.embedding_uri_base
+    end
+
+    # 3. Falling back to Setting.openai_uri_base
+    ClimateControl.modify EMBEDDING_URI_BASE: nil, OPENAI_URI_BASE: nil do
+      Setting.stubs(:openai_uri_base).returns("http://setting-openai.local/v1/")
+      assert_equal "http://setting-openai.local/v1/", @host.embedding_uri_base
+    end
+
+    # 4. Default fallback
+    ClimateControl.modify EMBEDDING_URI_BASE: nil, OPENAI_URI_BASE: nil do
+      Setting.stubs(:openai_uri_base).returns(nil)
+      assert_equal "https://api.openai.com/v1/", @host.embedding_uri_base
+    end
+  end
+
+  test "embedding_access_token falls back from ENV to Setting" do
+    # 1. ENV is set
+    ClimateControl.modify EMBEDDING_ACCESS_TOKEN: "env-embedding-token" do
+      Setting.stubs(:openai_access_token).returns("setting-openai-token")
+      assert_equal "env-embedding-token", @host.embedding_access_token
+    end
+
+    # 2. OPENAI_ACCESS_TOKEN env is set
+    ClimateControl.modify EMBEDDING_ACCESS_TOKEN: nil, OPENAI_ACCESS_TOKEN: "env-openai-token" do
+      Setting.stubs(:openai_access_token).returns("setting-openai-token")
+      assert_equal "env-openai-token", @host.embedding_access_token
+    end
+
+    # 3. Falling back to Setting.openai_access_token
+    ClimateControl.modify EMBEDDING_ACCESS_TOKEN: nil, OPENAI_ACCESS_TOKEN: nil do
+      Setting.stubs(:openai_access_token).returns("setting-openai-token")
+      assert_equal "setting-openai-token", @host.embedding_access_token
+    end
+
+    # 4. Nil when nothing is set
+    ClimateControl.modify EMBEDDING_ACCESS_TOKEN: nil, OPENAI_ACCESS_TOKEN: nil do
+      Setting.stubs(:openai_access_token).returns(nil)
+      assert_nil @host.embedding_access_token
+    end
   end
 
   private
