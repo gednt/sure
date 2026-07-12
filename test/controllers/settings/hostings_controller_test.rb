@@ -589,10 +589,10 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "force_auto_categorize falls back to 25 when LLM_MAX_ITEMS_PER_CALL is unset" do
+  test "force_auto_categorize falls back to 5 when LLM_MAX_ITEMS_PER_CALL is unset" do
     uncategorized = (1..200).to_a
     Family.any_instance.stubs(:uncategorized_enrichable_transaction_ids).returns(uncategorized)
-    expected_batch = uncategorized.first(25)
+    expected_batch = uncategorized.first(5)
     Family.any_instance.expects(:auto_categorize_transactions).with(expected_batch).returns(0)
 
     with_env_overrides("LLM_MAX_ITEMS_PER_CALL" => nil) do

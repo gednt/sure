@@ -382,8 +382,13 @@ class Settings::HostingsController < ApplicationController
     end
 
     # Cap the manual "force auto-categorize" run so the web worker doesn't
-    # block on a long LLM call. ENV wins, then Setting, then 25 (same chain
-    # Provider::Openai#max_items_per_call uses for scheduled batches).
+    # block on a long LLM call. ENV wins, then Setting, then 5 (same chain
+    # Provider::Openai#max_items_per_call uses for scheduled batches). The
+    # default of 5 is conservative: smaller local LLMs (e.g. phi-4) often
+    # stop early and return only the first few categorizations when asked
+    # for long enumerated output, so small batches yield more useful
+    # results than large ones. Operators with stronger models can raise
+    # LLM_MAX_ITEMS_PER_CALL in .env.local.
     def force_auto_categorize_batch_size
       env_value = ENV["LLM_MAX_ITEMS_PER_CALL"].to_i
       return env_value if env_value.positive?
@@ -391,6 +396,6 @@ class Settings::HostingsController < ApplicationController
       setting_value = Setting.llm_max_items_per_call.to_i
       return setting_value if setting_value.positive?
 
-      25
+      5
     end
 end
