@@ -316,9 +316,18 @@ class Settings::HostingsController < ApplicationController
     if ids.empty?
       redirect_to settings_hosting_path, notice: t(".no_transactions")
     else
-      transactions = Current.family.transactions.where(id: ids)
-      Current.family.auto_categorize_transactions_later(transactions)
-      redirect_to settings_hosting_path, notice: t(".success")
+      # Limit manual run to protect web worker process from timing out
+      ids_to_process = ids.first(100)
+      begin
+        modified_count = Current.family.auto_categorize_transactions(ids_to_process)
+        if modified_count > 0
+          redirect_to settings_hosting_path, notice: t(".success_with_count", count: modified_count)
+        else
+          redirect_to settings_hosting_path, notice: t(".no_changes")
+        end
+      rescue => e
+        redirect_to settings_hosting_path, alert: t(".failed", error: e.message)
+      end
     end
   end
 

@@ -254,5 +254,7 @@ en:
         force_auto_categorize_description: Trigger a manual auto-categorization run immediately.
         confirm_force_auto_categorize: Are you sure you want to force auto-categorization now? This will call your configured LLM and consume tokens.
       force_auto_categorize:
-        success: Auto-categorization enqueued successfully.
+        success_with_count: "Successfully categorized %{count} transactions."
+        no_changes: "Auto-categorization completed, but no categories were changed."
+        failed: "Auto-categorization failed: %{error}"
         no_transactions: No uncategorized transactions found to categorize.

@@ -522,19 +522,40 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
     Setting.securities_providers = ""
   end
 
-  test "force_auto_categorize enqueues AutoCategorizeJob when admin and uncategorized transactions exist" do
+  test "force_auto_categorize categorizes synchronously when admin and uncategorized transactions exist" do
     Family.any_instance.stubs(:uncategorized_enrichable_transaction_ids).returns([ 1, 2 ])
+    Family.any_instance.expects(:auto_categorize_transactions).with([ 1, 2 ]).returns(2)
 
     with_self_hosting do
-      assert_enqueued_with(job: AutoCategorizeJob) do
-        post force_auto_categorize_settings_hosting_url
-      end
+      post force_auto_categorize_settings_hosting_url
       assert_redirected_to settings_hosting_url
-      assert_equal I18n.t("settings.hostings.force_auto_categorize.success"), flash[:notice]
+      assert_equal I18n.t("settings.hostings.force_auto_categorize.success_with_count", count: 2), flash[:notice]
     end
   end
 
-  test "force_auto_categorize does not enqueue when empty" do
+  test "force_auto_categorize categorizes synchronously with no changes" do
+    Family.any_instance.stubs(:uncategorized_enrichable_transaction_ids).returns([ 1, 2 ])
+    Family.any_instance.expects(:auto_categorize_transactions).with([ 1, 2 ]).returns(0)
+
+    with_self_hosting do
+      post force_auto_categorize_settings_hosting_url
+      assert_redirected_to settings_hosting_url
+      assert_equal I18n.t("settings.hostings.force_auto_categorize.no_changes"), flash[:notice]
+    end
+  end
+
+  test "force_auto_categorize handles error gracefully when LLM fails" do
+    Family.any_instance.stubs(:uncategorized_enrichable_transaction_ids).returns([ 1, 2 ])
+    Family.any_instance.expects(:auto_categorize_transactions).raises(StandardError.new("connection timeout"))
+
+    with_self_hosting do
+      post force_auto_categorize_settings_hosting_url
+      assert_redirected_to settings_hosting_url
+      assert_equal I18n.t("settings.hostings.force_auto_categorize.failed", error: "connection timeout"), flash[:alert]
+    end
+  end
+
+  test "force_auto_categorize does not execute when empty" do
     Family.any_instance.stubs(:uncategorized_enrichable_transaction_ids).returns([])
 
     with_self_hosting do
@@ -544,7 +565,7 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "force_auto_categorize redirects non-admin and does not enqueue" do
+  test "force_auto_categorize redirects non-admin and does not execute" do
     sign_in users(:family_member)
 
     with_self_hosting do
