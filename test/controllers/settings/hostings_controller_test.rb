@@ -575,6 +575,34 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "force_auto_categorize caps the batch using LLM_MAX_ITEMS_PER_CALL" do
+    uncategorized = (1..200).to_a
+    Family.any_instance.stubs(:uncategorized_enrichable_transaction_ids).returns(uncategorized)
+    expected_batch = uncategorized.first(10)
+    Family.any_instance.expects(:auto_categorize_transactions).with(expected_batch).returns(0)
+
+    with_env_overrides("LLM_MAX_ITEMS_PER_CALL" => "10") do
+      with_self_hosting do
+        post force_auto_categorize_settings_hosting_url
+        assert_redirected_to settings_hosting_url
+      end
+    end
+  end
+
+  test "force_auto_categorize falls back to 25 when LLM_MAX_ITEMS_PER_CALL is unset" do
+    uncategorized = (1..200).to_a
+    Family.any_instance.stubs(:uncategorized_enrichable_transaction_ids).returns(uncategorized)
+    expected_batch = uncategorized.first(25)
+    Family.any_instance.expects(:auto_categorize_transactions).with(expected_batch).returns(0)
+
+    with_env_overrides("LLM_MAX_ITEMS_PER_CALL" => nil) do
+      with_self_hosting do
+        post force_auto_categorize_settings_hosting_url
+        assert_redirected_to settings_hosting_url
+      end
+    end
+  end
+
   test "warning banner renders when uri_base is set and model is blank" do
     Setting.openai_uri_base = "http://localhost:11434/v1"
     Setting.openai_model = nil

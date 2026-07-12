@@ -317,7 +317,7 @@ class Settings::HostingsController < ApplicationController
       redirect_to settings_hosting_path, notice: t(".no_transactions")
     else
       # Limit manual run to protect web worker process from timing out
-      ids_to_process = ids.first(100)
+      ids_to_process = ids.first(force_auto_categorize_batch_size)
       begin
         modified_count = Current.family.auto_categorize_transactions(ids_to_process)
         if modified_count > 0
@@ -379,5 +379,18 @@ class Settings::HostingsController < ApplicationController
 
     def current_user_timezone
       Current.family&.timezone.presence || "UTC"
+    end
+
+    # Cap the manual "force auto-categorize" run so the web worker doesn't
+    # block on a long LLM call. ENV wins, then Setting, then 25 (same chain
+    # Provider::Openai#max_items_per_call uses for scheduled batches).
+    def force_auto_categorize_batch_size
+      env_value = ENV["LLM_MAX_ITEMS_PER_CALL"].to_i
+      return env_value if env_value.positive?
+
+      setting_value = Setting.llm_max_items_per_call.to_i
+      return setting_value if setting_value.positive?
+
+      25
     end
 end
