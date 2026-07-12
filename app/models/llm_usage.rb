@@ -148,7 +148,9 @@ class LlmUsage < ApplicationRecord
       total_cost: total_cost,
       avg_cost: avg_cost,
       by_operation: scope_with_cost.group(:operation).sum(:estimated_cost).transform_values { |v| v.to_f.round(2) },
-      by_model: scope_with_cost.group(:model).sum(:estimated_cost).transform_values { |v| v.to_f.round(2) }
+      by_model: scope_with_cost.group(:model).sum(:estimated_cost).transform_values { |v| v.to_f.round(2) },
+      by_operation_tokens: scope.group(:operation).sum(:total_tokens),
+      by_operation_requests: scope.group(:operation).count
     }
   end
 

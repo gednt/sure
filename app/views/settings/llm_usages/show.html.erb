@@ -66,16 +66,30 @@
     </div>
   </div>
 
-  <!-- Cost by Operation -->
-  <% if @statistics[:by_operation].any? %>
+  <% operations = (@statistics[:by_operation_tokens].keys + @statistics[:by_operation].keys).uniq %>
+  <% if operations.any? %>
     <div class="mb-6">
       <h2 class="text-lg font-semibold text-primary mb-3"><%= t(".cost_by_operation") %></h2>
       <div class="bg-container-inset rounded-lg p-4">
-        <div class="space-y-2">
-          <% @statistics[:by_operation].each do |operation, cost| %>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-primary"><%= operation.humanize %></span>
-              <span class="text-sm font-medium text-primary">$<%= sprintf("%.4f", cost) %></span>
+        <div class="space-y-4">
+          <% operations.each do |operation| %>
+            <% cost = @statistics[:by_operation][operation] %>
+            <% tokens = @statistics[:by_operation_tokens][operation] || 0 %>
+            <% requests = @statistics[:by_operation_requests][operation] || 0 %>
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-sm font-medium text-primary"><%= t(".operations.#{operation}", default: operation.humanize) %></p>
+                <p class="text-xs text-secondary mt-0.5">
+                  <%= t(".requests_count", count: requests) %> &middot; <%= t(".tokens_count", count: tokens) %>
+                </p>
+              </div>
+              <span class="text-sm font-medium text-primary">
+                <% if cost.present? %>
+                  $<%= sprintf("%.4f", cost) %>
+                <% else %>
+                  <%= t("common.not_applicable", default: "N/A") %>
+                <% end %>
+              </span>
             </div>
           <% end %>
         </div>

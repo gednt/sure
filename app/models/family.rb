@@ -239,6 +239,10 @@ class Family < ApplicationRecord
     Merchant.where(id: (assigned_ids + recently_unlinked_ids + family_merchant_ids).uniq)
   end
 
+  def uncategorized_enrichable_transaction_ids
+    transactions.where(category_id: nil).enrichable(:category_id).pluck(:id)
+  end
+
   def auto_categorize_transactions_later(transactions, rule_run_id: nil)
     AutoCategorizeJob.perform_later(self, transaction_ids: transactions.pluck(:id), rule_run_id: rule_run_id)
   end

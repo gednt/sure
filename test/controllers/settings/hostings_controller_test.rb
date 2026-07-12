@@ -521,4 +521,63 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
   ensure
     Setting.securities_providers = ""
   end
+
+  test "force_auto_categorize enqueues AutoCategorizeJob when admin and uncategorized transactions exist" do
+    Family.any_instance.stubs(:uncategorized_enrichable_transaction_ids).returns([ 1, 2 ])
+
+    with_self_hosting do
+      assert_enqueued_with(job: AutoCategorizeJob) do
+        post force_auto_categorize_settings_hosting_url
+      end
+      assert_redirected_to settings_hosting_url
+      assert_equal I18n.t("settings.hostings.force_auto_categorize.success"), flash[:notice]
+    end
+  end
+
+  test "force_auto_categorize does not enqueue when empty" do
+    Family.any_instance.stubs(:uncategorized_enrichable_transaction_ids).returns([])
+
+    with_self_hosting do
+      post force_auto_categorize_settings_hosting_url
+      assert_redirected_to settings_hosting_url
+      assert_equal I18n.t("settings.hostings.force_auto_categorize.no_transactions"), flash[:notice]
+    end
+  end
+
+  test "force_auto_categorize redirects non-admin and does not enqueue" do
+    sign_in users(:family_member)
+
+    with_self_hosting do
+      post force_auto_categorize_settings_hosting_url
+      assert_redirected_to settings_hosting_url
+      assert_equal I18n.t("settings.hostings.ensure_admin.not_authorized"), flash[:alert]
+    end
+  end
+
+  test "warning banner renders when uri_base is set and model is blank" do
+    Setting.openai_uri_base = "http://localhost:11434/v1"
+    Setting.openai_model = nil
+
+    with_self_hosting do
+      get settings_hosting_url
+      assert_response :success
+      assert_includes response.body, I18n.t("settings.hostings.openai_settings.custom_provider_model_missing_warning")
+    end
+  ensure
+    Setting.openai_uri_base = nil
+  end
+
+  test "warning banner does not render when both uri_base and model are set" do
+    Setting.openai_uri_base = "http://localhost:11434/v1"
+    Setting.openai_model = "llama3.1"
+
+    with_self_hosting do
+      get settings_hosting_url
+      assert_response :success
+      refute_includes response.body, I18n.t("settings.hostings.openai_settings.custom_provider_model_missing_warning")
+    end
+  ensure
+    Setting.openai_uri_base = nil
+    Setting.openai_model = nil
+  end
 end

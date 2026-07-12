@@ -125,6 +125,10 @@ en:
         uri_base_placeholder: "https://api.openai.com/v1 (default)"
         model_label: Model (Optional)
         model_placeholder: "gpt-4.1 (default)"
+        custom_provider_model_missing_warning: "A custom API base URL is set but Model is blank. Auto-categorization and merchant detection will be skipped until a model is entered."
+        force_auto_categorize_button: "Force Auto-Categorize Now"
+        force_auto_categorize_description: "Trigger a manual auto-categorization run immediately."
+        confirm_force_auto_categorize: "Are you sure you want to force auto-categorization now? This will call your configured LLM and consume tokens."
         json_mode_label: JSON Mode
         json_mode_auto: Auto (recommended)
         json_mode_strict: Strict (best for thinking models)
@@ -233,3 +237,22 @@ en:
         include_pending_label: Include pending transactions
         include_pending_description: When enabled, pending (uncleared) transactions will be imported and automatically reconciled when they post. Disable if your bank provides unreliable pending data.
         env_configured_message: This setting is disabled because a provider environment variable (SIMPLEFIN_INCLUDE_PENDING or PLAID_INCLUDE_PENDING) is set. Remove it to enable this setting.
+      auto_categorize_settings:
+        title: Auto-Categorization
+        enable_label: Enable scheduled auto-categorization
+        enable_description: Automatically categorize new transactions using the configured LLM.
+        frequency_label: Frequency
+        frequency_description: Choose how often auto-categorization should run.
+        time_label: Time of day (HH:MM)
+        time_description: Specify the run time for daily auto-categorization.
+        time_sub_daily_help: Sub-daily frequencies only use the minute offset (e.g. 03:33 runs at minute 33).
+        frequency_hourly: Hourly
+        frequency_every_6_hours: Every 6 hours
+        frequency_every_12_hours: Every 12 hours
+        frequency_daily: Daily
+        force_auto_categorize_button: Force Auto-Categorize Now
+        force_auto_categorize_description: Trigger a manual auto-categorization run immediately.
+        confirm_force_auto_categorize: Are you sure you want to force auto-categorization now? This will call your configured LLM and consume tokens.
+      force_auto_categorize:
+        success: Auto-categorization enqueued successfully.
+        no_transactions: No uncategorized transactions found to categorize.

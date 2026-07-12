@@ -61,10 +61,19 @@ Sidekiq.configure_server do |config|
 
   # Initialize auto-sync scheduler when Sidekiq server starts
   config.on(:startup) do
-    AutoSyncScheduler.sync!
-    Rails.logger.info("[AutoSyncScheduler] Initialized sync_all_accounts cron job")
-  rescue => e
-    Rails.logger.error("[AutoSyncScheduler] Failed to initialize: #{e.message}")
+    begin
+      AutoSyncScheduler.sync!
+      Rails.logger.info("[AutoSyncScheduler] Initialized sync_all_accounts cron job")
+    rescue => e
+      Rails.logger.error("[AutoSyncScheduler] Failed to initialize: #{e.message}")
+    end
+
+    begin
+      AutoCategorizeScheduler.sync!
+      Rails.logger.info("[AutoCategorizeScheduler] Initialized auto_categorize_all cron job")
+    rescue => e
+      Rails.logger.error("[AutoCategorizeScheduler] Failed to initialize AutoCategorizeScheduler: #{e.message}")
+    end
   end
 end
 

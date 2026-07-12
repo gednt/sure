@@ -12,7 +12,7 @@ class Settings::HostingsController < ApplicationController
 
   guard_feature unless: -> { self_hosted? }
 
-  before_action :ensure_admin, only: [ :update, :clear_cache, :disconnect_external_assistant ]
+  before_action :ensure_admin, only: [ :update, :clear_cache, :disconnect_external_assistant, :force_auto_categorize ]
   before_action :ensure_super_admin_for_onboarding, only: :update
 
   def show
@@ -46,6 +46,10 @@ class Settings::HostingsController < ApplicationController
     if @show_yahoo_finance_settings
       @yahoo_finance_provider = Provider::Registry.get_provider(:yahoo_finance)
     end
+
+    openai_uri_base = ENV["OPENAI_URI_BASE"].presence || Setting.openai_uri_base.presence
+    openai_model = ENV["OPENAI_MODEL"].presence || Setting.openai_model.presence
+    @openai_custom_provider_valid = openai_uri_base.blank? || openai_model.present?
   end
 
   def update
@@ -141,6 +145,37 @@ class Settings::HostingsController < ApplicationController
 
     if sync_settings_changed
       sync_auto_sync_scheduler!
+    end
+
+    auto_categorize_settings_changed = false
+
+    if hosting_params.key?(:auto_categorize_enabled)
+      Setting.auto_categorize_enabled = hosting_params[:auto_categorize_enabled] == "1"
+      auto_categorize_settings_changed = true
+    end
+
+    if hosting_params.key?(:auto_categorize_frequency)
+      freq_value = hosting_params[:auto_categorize_frequency]
+      if Setting::AUTO_CATEGORIZE_FREQUENCIES.include?(freq_value)
+        Setting.auto_categorize_frequency = freq_value
+        auto_categorize_settings_changed = true
+      end
+    end
+
+    if hosting_params.key?(:auto_categorize_time)
+      time_value = hosting_params[:auto_categorize_time]
+      unless Setting.valid_auto_categorize_time?(time_value)
+        flash[:alert] = t(".invalid_sync_time")
+        return redirect_to settings_hosting_path
+      end
+
+      Setting.auto_categorize_time = time_value
+      Setting.auto_categorize_timezone = current_user_timezone
+      auto_categorize_settings_changed = true
+    end
+
+    if auto_categorize_settings_changed
+      sync_auto_categorize_scheduler!
     end
 
     if hosting_params.key?(:openai_access_token)
@@ -276,10 +311,21 @@ class Settings::HostingsController < ApplicationController
     redirect_to settings_hosting_path, alert: t("settings.hostings.update.failure")
   end
 
+  def force_auto_categorize
+    ids = Current.family.uncategorized_enrichable_transaction_ids
+    if ids.empty?
+      redirect_to settings_hosting_path, notice: t(".no_transactions")
+    else
+      transactions = Current.family.transactions.where(id: ids)
+      Current.family.auto_categorize_transactions_later(transactions)
+      redirect_to settings_hosting_path, notice: t(".success")
+    end
+  end
+
   private
     def hosting_params
       return ActionController::Parameters.new unless params.key?(:setting)
-      params.require(:setting).permit(:onboarding_state, :require_email_confirmation, :invite_only_default_family_id, :brand_fetch_client_id, :brand_fetch_high_res_logos, :twelve_data_api_key, :tiingo_api_key, :eodhd_api_key, :alpha_vantage_api_key, :tinkoff_invest_api_key, :openai_access_token, :openai_uri_base, :openai_model, :openai_json_mode, :anthropic_access_token, :anthropic_base_url, :anthropic_model, :llm_provider, :llm_context_window, :llm_max_response_tokens, :llm_max_items_per_call, :exchange_rate_provider, :securities_provider, :syncs_include_pending, :auto_sync_enabled, :auto_sync_time, :external_assistant_url, :external_assistant_token, :external_assistant_agent_id, securities_providers: [])
+      params.require(:setting).permit(:onboarding_state, :require_email_confirmation, :invite_only_default_family_id, :brand_fetch_client_id, :brand_fetch_high_res_logos, :twelve_data_api_key, :tiingo_api_key, :eodhd_api_key, :alpha_vantage_api_key, :tinkoff_invest_api_key, :openai_access_token, :openai_uri_base, :openai_model, :openai_json_mode, :anthropic_access_token, :anthropic_base_url, :anthropic_model, :llm_provider, :llm_context_window, :llm_max_response_tokens, :llm_max_items_per_call, :exchange_rate_provider, :securities_provider, :syncs_include_pending, :auto_sync_enabled, :auto_sync_time, :auto_categorize_enabled, :auto_categorize_frequency, :auto_categorize_time, :auto_categorize_timezone, :external_assistant_url, :external_assistant_token, :external_assistant_agent_id, securities_providers: [])
     end
 
     def update_assistant_type
@@ -304,6 +350,14 @@ class Settings::HostingsController < ApplicationController
       AutoSyncScheduler.sync!
     rescue StandardError => error
       Rails.logger.error("[AutoSyncScheduler] Failed to sync scheduler: #{error.message}")
+      Rails.logger.error(error.backtrace.join("\n"))
+      flash[:alert] = t(".scheduler_sync_failed")
+    end
+
+    def sync_auto_categorize_scheduler!
+      AutoCategorizeScheduler.sync!
+    rescue StandardError => error
+      Rails.logger.error("[AutoCategorizeScheduler] Failed to sync scheduler: #{error.message}")
       Rails.logger.error(error.backtrace.join("\n"))
       flash[:alert] = t(".scheduler_sync_failed")
     end

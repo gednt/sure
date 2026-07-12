@@ -16,6 +16,10 @@
                          controller: "auto-submit-form",
                          "auto-submit-form-trigger-event-value": "blur"
                        } do |form| %>
+  <% if @openai_custom_provider_valid == false %>
+    <%= render DS::Alert.new(message: t(".custom_provider_model_missing_warning"), variant: :warning) %>
+  <% end %>
+
   <%= form.password_field :openai_access_token,
                           label: t(".access_token_label"),
                           placeholder: t(".access_token_placeholder"),

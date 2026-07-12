@@ -40,6 +40,9 @@ class Provider::Anthropic < Provider
     @default_model = model.presence || DEFAULT_MODEL
   end
 
+  attr_reader :default_model
+  alias_method :model, :default_model
+
   def supports_model?(model)
     # Custom endpoints (Bedrock, Vertex, or other Anthropic-compatible proxies)
     # use their own model-ID conventions — e.g. Bedrock IDs look like

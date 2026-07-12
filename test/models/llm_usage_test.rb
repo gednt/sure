@@ -86,4 +86,64 @@ class LlmUsageTest < ActiveSupport::TestCase
     )
     assert_in_delta 0.0, cost, 0.0001
   end
+
+  test "statistics_for_family aggregates tokens and requests over all rows including nil-cost custom provider rows" do
+    family = Family.create!(name: "Test LLM Stats Family")
+
+    LlmUsage.create!(
+      family: family,
+      provider: "openai",
+      model: "gpt-4.1",
+      operation: "chat",
+      prompt_tokens: 100,
+      completion_tokens: 50,
+      total_tokens: 150,
+      estimated_cost: 0.005
+    )
+
+    LlmUsage.create!(
+      family: family,
+      provider: "custom",
+      model: "custom-local-model",
+      operation: "auto_categorize",
+      prompt_tokens: 200,
+      completion_tokens: 100,
+      total_tokens: 300,
+      estimated_cost: nil
+    )
+
+    LlmUsage.create!(
+      family: family,
+      provider: "openai",
+      model: "gpt-4.1",
+      operation: "chat",
+      prompt_tokens: 300,
+      completion_tokens: 150,
+      total_tokens: 450,
+      estimated_cost: 0.015
+    )
+
+    LlmUsage.create!(
+      family: family,
+      provider: "custom",
+      model: "custom-local-model",
+      operation: "chat",
+      prompt_tokens: 400,
+      completion_tokens: 200,
+      total_tokens: 600,
+      estimated_cost: nil
+    )
+
+    stats = LlmUsage.statistics_for_family(family)
+
+    assert_equal 4, stats[:total_requests]
+    assert_equal 2, stats[:requests_with_cost]
+    assert_equal 1500, stats[:total_tokens]
+    assert_equal 1000, stats[:total_prompt_tokens]
+    assert_equal 500, stats[:total_completion_tokens]
+    assert_equal 0.02, stats[:total_cost]
+    assert_equal({ "chat" => 0.02 }, stats[:by_operation])
+    assert_equal({ "chat" => 1200, "auto_categorize" => 300 }, stats[:by_operation_tokens])
+    assert_equal({ "chat" => 3, "auto_categorize" => 1 }, stats[:by_operation_requests])
+  end
 end

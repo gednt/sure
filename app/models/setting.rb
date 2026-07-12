@@ -144,6 +144,13 @@ class Setting < RailsSettings::Base
   field :auto_sync_time, type: :string, default: ENV.fetch("AUTO_SYNC_TIME", "02:22")
   field :auto_sync_timezone, type: :string, default: ENV.fetch("AUTO_SYNC_TIMEZONE", "UTC")
 
+  field :auto_categorize_enabled, type: :boolean, default: ENV.fetch("AUTO_CATEGORIZE_ENABLED", "0") == "1"
+  field :auto_categorize_frequency, type: :string, default: ENV.fetch("AUTO_CATEGORIZE_FREQUENCY", "daily")
+  field :auto_categorize_time, type: :string, default: ENV.fetch("AUTO_CATEGORIZE_TIME", "03:33")
+  field :auto_categorize_timezone, type: :string, default: ENV.fetch("AUTO_CATEGORIZE_TIMEZONE", "UTC")
+
+  AUTO_CATEGORIZE_FREQUENCIES = %w[hourly every_6_hours every_12_hours daily].freeze
+
   AUTO_SYNC_TIME_FORMAT = /\A([01]?\d|2[0-3]):([0-5]\d)\z/
 
   def self.valid_auto_sync_time?(time_str)
@@ -154,6 +161,11 @@ class Setting < RailsSettings::Base
   def self.valid_auto_sync_timezone?(timezone_str)
     return false if timezone_str.blank?
     ActiveSupport::TimeZone[timezone_str].present?
+  end
+
+  def self.valid_auto_categorize_time?(time_str)
+    return false if time_str.blank?
+    AUTO_SYNC_TIME_FORMAT.match?(time_str.to_s.strip)
   end
 
   # Dynamic fields are now stored as individual entries with "dynamic:" prefix

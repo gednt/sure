@@ -1,0 +1,74 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between">
+    <div class="space-y-1">
+      <p class="text-sm"><%= t(".enable_label") %></p>
+      <p class="text-secondary text-sm"><%= t(".enable_description") %></p>
+    </div>
+
+    <%= styled_form_with model: Setting.new,
+                         url: settings_hosting_path,
+                         method: :patch,
+                         data: { controller: "auto-submit-form", auto_submit_form_trigger_event_value: "change" } do |form| %>
+      <%= form.toggle :auto_categorize_enabled,
+                      checked: Setting.auto_categorize_enabled,
+                      data: { auto_submit_form_target: "auto" } %>
+    <% end %>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <div class="space-y-1">
+      <p class="text-sm"><%= t(".frequency_label") %></p>
+      <p class="text-secondary text-sm"><%= t(".frequency_description") %></p>
+    </div>
+
+    <%= form_with model: Setting.new,
+                  url: settings_hosting_path,
+                  method: :patch,
+                  data: { controller: "auto-submit-form", auto_submit_form_trigger_event_value: "change" } do |form| %>
+      <%= form.select :auto_categorize_frequency,
+                      options_for_select(
+                        Setting::AUTO_CATEGORIZE_FREQUENCIES.map { |f| [t(".frequency_#{f}"), f] },
+                        Setting.auto_categorize_frequency
+                      ),
+                      {},
+                      { class: "rounded-lg border border-primary px-3 py-2 text-sm bg-container text-primary",
+                        data: { auto_submit_form_target: "auto" } } %>
+    <% end %>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <div class="space-y-1 flex-1 pr-4">
+      <p class="text-sm"><%= t(".time_label") %></p>
+      <p class="text-secondary text-sm"><%= t(".time_description") %></p>
+      <% if Setting.auto_categorize_frequency != "daily" %>
+        <p class="text-xs text-secondary mt-1"><%= t(".time_sub_daily_help") %></p>
+      <% end %>
+    </div>
+
+    <%= form_with model: Setting.new,
+                  url: settings_hosting_path,
+                  method: :patch,
+                  data: { controller: "auto-submit-form", auto_submit_form_trigger_event_value: "change" } do |form| %>
+      <%= form.time_field :auto_categorize_time,
+                          value: Setting.auto_categorize_time,
+                          disabled: !Setting.auto_categorize_enabled || Setting.auto_categorize_frequency != "daily",
+                          class: "rounded-lg border border-primary px-3 py-2 text-sm bg-container text-primary disabled:opacity-50",
+                          data: { auto_submit_form_target: "auto" } %>
+    <% end %>
+  </div>
+
+  <div class="pt-4 border-t border-secondary flex items-center justify-between">
+    <div class="space-y-1 flex-1 pr-4">
+      <p class="text-sm font-medium"><%= t(".force_auto_categorize_button") %></p>
+      <p class="text-secondary text-sm"><%= t(".force_auto_categorize_description") %></p>
+    </div>
+
+    <%= render DS::Button.new(
+          text: t(".force_auto_categorize_button"),
+          href: force_auto_categorize_settings_hosting_path,
+          method: :post,
+          variant: :primary,
+          data: { turbo_confirm: t(".confirm_force_auto_categorize") }
+        ) %>
+  </div>
+</div>
